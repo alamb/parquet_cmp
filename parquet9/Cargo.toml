@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 parquet = "9.0"
+arrow = "9.0"

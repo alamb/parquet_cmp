@@ -9,6 +9,7 @@ edition = "2021"
 clap = { version = "3.0.14", features = ["derive"] }
 parquet9 = { path = "./parquet9" }
 parquetnext = { path = "./parquetnext" }
+arrow = "9.0"
 
 [workspace]
 members = [

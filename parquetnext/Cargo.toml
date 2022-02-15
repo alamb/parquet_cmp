@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 parquet = { git = "https://github.com/tustvold/arrow-rs.git", branch="delta-packed-reader" }
+arrow = { git = "https://github.com/tustvold/arrow-rs.git", branch="delta-packed-reader" }
