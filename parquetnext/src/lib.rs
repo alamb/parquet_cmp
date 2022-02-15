@@ -1,19 +1,17 @@
-use std::path::Path;
-use std::fmt::Display;
 use arrow::record_batch::RecordBatchReader;
+use parquet::arrow::{ArrowReader, ParquetFileArrowReader};
 use parquet::file::reader::SerializedFileReader;
-use parquet::arrow::{ParquetFileArrowReader, ArrowReader};
-use std::sync::Arc;
+use std::fmt::Display;
 use std::fs::File;
-
+use std::path::Path;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct Error {
-    msg: String
+    msg: String,
 }
 
-impl std::error::Error for Error {
-}
+impl std::error::Error for Error {}
 
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -23,22 +21,27 @@ impl Display for Error {
 
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
-        Error { msg: format!("io error: {}", e) }
+        Error {
+            msg: format!("io error: {}", e),
+        }
     }
 }
 
 impl From<parquet::errors::ParquetError> for Error {
     fn from(e: parquet::errors::ParquetError) -> Self {
-        Error { msg: format!("parquet error: {}", e) }
+        Error {
+            msg: format!("parquet error: {}", e),
+        }
     }
 }
 
 impl From<arrow::error::ArrowError> for Error {
     fn from(e: arrow::error::ArrowError) -> Self {
-        Error { msg: format!("arrow error: {}", e) }
+        Error {
+            msg: format!("arrow error: {}", e),
+        }
     }
 }
-
 
 /// Returns Arrow IPC format (
 ///
@@ -52,7 +55,8 @@ pub fn read_to_serialized_record_batches(path: &Path) -> Result<Vec<u8>, Error> 
     //println!("Converted arrow schema is: {}", arrow_reader.get_schema()?);
 
     let reader = arrow_reader.get_record_reader(2048)?;
-    let mut ipc_writer = arrow::ipc::writer::StreamWriter::try_new(Vec::<u8>::new(), &reader.schema())?;
+    let mut ipc_writer =
+        arrow::ipc::writer::StreamWriter::try_new(Vec::<u8>::new(), &reader.schema())?;
 
     for batch in reader {
         let batch = batch?;

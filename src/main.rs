@@ -1,9 +1,14 @@
 mod paths;
 
-
 use std::path::PathBuf;
 
-use arrow::{array::Array, record_batch::RecordBatch, compute::eq_dyn, datatypes::{DataType, Int32Type, Field}, array::{as_dictionary_array}};
+use arrow::{
+    array::as_dictionary_array,
+    array::Array,
+    compute::eq_dyn,
+    datatypes::{DataType, Field, Int32Type},
+    record_batch::RecordBatch,
+};
 use clap::Parser;
 
 /// Command line program for comparing parquet reader implementations
@@ -24,16 +29,16 @@ struct ParquetCmp {
     path: PathBuf,
 }
 
-
-
 fn main() {
     let args = ParquetCmp::parse();
 
     for file in paths::ParquetIter::new(&args.path) {
         println!("Comparing file {:?}", file);
 
-        match (parquet9::read_to_serialized_record_batches(&file),
-                                           parquetnext::read_to_serialized_record_batches(&file)) {
+        match (
+            parquet9::read_to_serialized_record_batches(&file),
+            parquetnext::read_to_serialized_record_batches(&file),
+        ) {
             (Ok(p9_data), Ok(pnext_data)) => {
                 compare(p9_data, pnext_data);
             }
@@ -42,11 +47,10 @@ fn main() {
                 println!("  Both readers had same problem reading; skipping file. ");
                 continue;
             }
-            _ => panic!("one reader got success, one got failure")
+            _ => panic!("one reader got success, one got failure"),
         };
         println!("Done");
     }
-
 }
 
 fn compare(p9_data: Vec<u8>, pnext_data: Vec<u8>) {
@@ -65,36 +69,41 @@ fn compare(p9_data: Vec<u8>, pnext_data: Vec<u8>) {
 
     assert_eq!(p9_batches[0].schema(), pnext_batches[0].schema());
 
-
-
     // now compare the batches
-    for (batch_idx, (p9_batch, pnext_batch)) in p9_batches.into_iter().zip(pnext_batches.into_iter()).enumerate() {
+    for (batch_idx, (p9_batch, pnext_batch)) in p9_batches
+        .into_iter()
+        .zip(pnext_batches.into_iter())
+        .enumerate()
+    {
         //println!("    comparing batch [{}]", batch_idx);
-        for ((p9_col, pnext_col), field) in p9_batch.columns().iter().zip(pnext_batch.columns().iter()).zip(p9_batch.schema().fields().iter()) {
+        for ((p9_col, pnext_col), field) in p9_batch
+            .columns()
+            .iter()
+            .zip(pnext_batch.columns().iter())
+            .zip(p9_batch.schema().fields().iter())
+        {
             //println!("      comparing column {}", field.name());
 
-
             match field.data_type() {
-                DataType::Dictionary(key_type, value_type) if matches!(key_type.as_ref(), &DataType::Int32) && matches!(value_type.as_ref(), &DataType::Utf8) => {
+                DataType::Dictionary(key_type, value_type)
+                    if matches!(key_type.as_ref(), &DataType::Int32)
+                        && matches!(value_type.as_ref(), &DataType::Utf8) =>
+                {
                     let p9_col = as_dictionary_array::<Int32Type>(p9_col);
                     let pnext_col = as_dictionary_array::<Int32Type>(pnext_col);
                     cmp_array(field, p9_col.keys(), pnext_col.keys());
                     cmp_array(field, p9_col.values(), pnext_col.values());
-                },
+                }
                 _ => {
                     // Any non null values should be the same
                     cmp_array(field, p9_col, pnext_col);
                 }
-
             };
         }
     }
-
-
-
 }
 
-fn cmp_array(field: &Field, p9_col: &dyn Array, pnext_col: &dyn Array){
+fn cmp_array(field: &Field, p9_col: &dyn Array, pnext_col: &dyn Array) {
     assert_eq!(p9_col.len(), pnext_col.len());
 
     // Should have same null / non null
@@ -104,16 +113,16 @@ fn cmp_array(field: &Field, p9_col: &dyn Array, pnext_col: &dyn Array){
 
     // Any non null values should be the same
     let cmp_result = eq_dyn(p9_col, pnext_col).unwrap();
-    assert!(cmp_result.iter().all(|v| v.unwrap_or(true)),
-            "comparison not true for column {}: {:?}", field.name(), cmp_result);
-
+    assert!(
+        cmp_result.iter().all(|v| v.unwrap_or(true)),
+        "comparison not true for column {}: {:?}",
+        field.name(),
+        cmp_result
+    );
 }
 
-
-fn to_batches(data: Vec<u8>) -> Vec<RecordBatch>{
+fn to_batches(data: Vec<u8>) -> Vec<RecordBatch> {
     let reader = arrow::ipc::reader::StreamReader::try_new(&*data).unwrap();
 
-    reader
-        .map(|r| r.unwrap())
-        .collect()
+    reader.map(|r| r.unwrap()).collect()
 }
