@@ -47,7 +47,7 @@ impl From<arrow::error::ArrowError> for Error {
 ///
 /// Decode using https://docs.rs/arrow/9.0.2/arrow/ipc/reader/index.html
 pub fn read_to_serialized_record_batches(path: &Path) -> Result<Vec<u8>, Error> {
-    println!("  Reading {:?} in parquetnext", path);
+    //println!("  Reading {:?} in parquetnext", path);
     let file = File::open(path)?;
     let file_reader = SerializedFileReader::new(file)?;
     let mut arrow_reader = ParquetFileArrowReader::new(Arc::new(file_reader));

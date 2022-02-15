@@ -12,15 +12,6 @@ use arrow::{
 use clap::Parser;
 
 /// Command line program for comparing parquet reader implementations
-///
-/// # Example read .parquet files in /path/to/files
-///
-///
-///
-/// # Reference
-///
-/// [logs]: https://github.com/grpc/proposal/blob/master/A16-binary-logging.md
-/// [protobuf]: https://github.com/grpc/grpc-proto/blob/master/grpc/binlog/v1/binarylog.proto
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
 struct ParquetCmp {
@@ -29,28 +20,38 @@ struct ParquetCmp {
     path: PathBuf,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = ParquetCmp::parse();
 
-    for file in paths::ParquetIter::new(&args.path) {
-        println!("Comparing file {:?}", file);
+    let tasks: Vec<_> = paths::ParquetIter::new(&args.path)
+        .map(|file| tokio::task::spawn(file_compare(file)))
+        .collect();
 
-        match (
-            parquet9::read_to_serialized_record_batches(&file),
-            parquetnext::read_to_serialized_record_batches(&file),
-        ) {
-            (Ok(p9_data), Ok(pnext_data)) => {
-                compare(p9_data, pnext_data);
-            }
-            (Err(p9_err), Err(pn_err)) if p9_err.to_string() == pn_err.to_string() => {
-                //println!("  both readers had problems reading: {}, {}", p9_err, pn_err);
-                println!("  Both readers had same problem reading; skipping file. ");
-                continue;
-            }
-            _ => panic!("one reader got success, one got failure"),
-        };
-        println!("Done");
+    let num_tasks = tasks.len();
+    for task in tasks {
+        task.await.unwrap();
     }
+
+    println!("{} files read with different readers compared successfully", num_tasks);
+}
+
+async fn file_compare(file: PathBuf) {
+    match (
+        parquet9::read_to_serialized_record_batches(&file),
+        parquetnext::read_to_serialized_record_batches(&file),
+    ) {
+        (Ok(p9_data), Ok(pnext_data)) => {
+            compare(p9_data, pnext_data);
+        }
+        (Err(p9_err), Err(pn_err)) if p9_err.to_string() == pn_err.to_string() => {
+            //println!("  both readers had problems reading: {}, {}", p9_err, pn_err);
+            println!("Both readers had same problem reading {:?}; skipping file. ", file);
+            return;
+        }
+        _ => panic!("one reader got success, one got failure"),
+    };
+    println!("file {:?} compared successfully", file);
 }
 
 fn compare(p9_data: Vec<u8>, pnext_data: Vec<u8>) {
@@ -70,10 +71,9 @@ fn compare(p9_data: Vec<u8>, pnext_data: Vec<u8>) {
     assert_eq!(p9_batches[0].schema(), pnext_batches[0].schema());
 
     // now compare the batches
-    for (batch_idx, (p9_batch, pnext_batch)) in p9_batches
+    for (p9_batch, pnext_batch) in p9_batches
         .into_iter()
         .zip(pnext_batches.into_iter())
-        .enumerate()
     {
         //println!("    comparing batch [{}]", batch_idx);
         for ((p9_col, pnext_col), field) in p9_batch

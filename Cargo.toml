@@ -10,6 +10,7 @@ clap = { version = "3.0.14", features = ["derive"] }
 parquet9 = { path = "./parquet9" }
 parquetnext = { path = "./parquetnext" }
 arrow = "9.0"
+tokio = {version = "1", features = ["macros", "rt-multi-thread"]}
 
 [workspace]
 members = [
