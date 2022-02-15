@@ -1,7 +1,7 @@
 mod paths;
 
 
-use std::{io::stdout, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::Parser;
 
@@ -9,7 +9,7 @@ use clap::Parser;
 ///
 /// # Example read .parquet files in /path/to/files
 ///
-/// parquet_cmp  /path/to/dumps
+///
 ///
 /// # Reference
 ///
@@ -35,9 +35,4 @@ fn main() {
         println!("Done");
     }
 
-}
-
-
-fn main() {
-    println!("Hello, world!");
 }
