@@ -33,7 +33,10 @@ async fn main() {
         task.await.unwrap();
     }
 
-    println!("{} files read with different readers compared successfully", num_tasks);
+    println!(
+        "{} files read with different readers compared successfully",
+        num_tasks
+    );
 }
 
 async fn file_compare(file: PathBuf) {
@@ -46,7 +49,10 @@ async fn file_compare(file: PathBuf) {
         }
         (Err(p9_err), Err(pn_err)) if p9_err.to_string() == pn_err.to_string() => {
             //println!("  both readers had problems reading: {}, {}", p9_err, pn_err);
-            println!("Both readers had same problem reading {:?}; skipping file. ", file);
+            println!(
+                "Both readers had same problem reading {:?}; skipping file. ",
+                file
+            );
             return;
         }
         _ => panic!("one reader got success, one got failure"),
@@ -71,10 +77,7 @@ fn compare(p9_data: Vec<u8>, pnext_data: Vec<u8>) {
     assert_eq!(p9_batches[0].schema(), pnext_batches[0].schema());
 
     // now compare the batches
-    for (p9_batch, pnext_batch) in p9_batches
-        .into_iter()
-        .zip(pnext_batches.into_iter())
-    {
+    for (p9_batch, pnext_batch) in p9_batches.into_iter().zip(pnext_batches.into_iter()) {
         //println!("    comparing batch [{}]", batch_idx);
         for ((p9_col, pnext_col), field) in p9_batch
             .columns()
